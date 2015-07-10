@@ -1,42 +1,56 @@
 #ifndef SYM_H_INCLUDED
 #define SYM_H_INCLUDED
+#include "ast.h"
 
-/* struct SymTable ** symStack;
-int symStackCurrent = 0;
+typedef enum SymKind {
+    SYM_FUNC,
+    SYM_TYPE,
+    SYM_VAR,
+} SymKind;
 
-struct SymTable {
+typedef struct Sym {
+    SymKind kind;
+    char * name;
+} Sym;
 
-};
+typedef struct SymTable {
+    Sym ** syms;
+    int length;
+} SymTable;
 
-typedef enum SymType {
-    NODE_SYM,
-    NODE_WRAPPER,
-    NODE_1,
-    NODE_2,
-    NODE_N
+typedef struct SymType {
+    SymKind kind;
+    char * name; //alias
+    NodeSyntax * type;
 } SymType;
 
-struct Sym {
-    SymType type;
+typedef struct SymFunc {
+    SymKind kind;
     char * name;
-};
+    NodeSyntax * type;
+    NodeN * args;
+    NodeSyntax * compound;
+} SymFunc;
 
-struct SymFunc {
-    SymType type;
+typedef struct SymVar {
+    SymKind kind;
     char * name;
+    NodeSyntax * type;
+    NodeSyntax * init;
+} SymVar;
 
-};
+SymTable * createSymTable();
+SymTable * appendSymTable(SymTable *, Sym *);
 
-struct SymType {
-    SymType type;
-    char * name;
+void appendDeclaration(NodeSyntax * declaration_specifiers, NodeN * init_declarator_list);
 
-};
+SymFunc * createSymFunc(char * name, NodeSyntax * type, NodeN * args, NodeSyntax * compound);;
+SymType * createSymType(char * name);
+SymVar * createSymVar(char * name, NodeSyntax * type, NodeSyntax * init);
 
-struct SymVar {
-    SymType type;
-    char * name;
-
-}; */
+void printSymFunc(SymFunc * sym, int level);
+void printSymType(SymType * sym, int level);
+void printSymVar(SymVar * sym, int level);
+void printSym(Sym * sym, int level);
 
 #endif // SYM_H_INCLUDED

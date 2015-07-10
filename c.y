@@ -1,13 +1,23 @@
 %{
 	#include <stddef.h>
 	#include "ast.h"
-	extern NodeSyntax * astRoot;
-	/*#define YYSTYPE yys
-	typedef union {
-		NodeSyntax *node;
-	} yys;*/
+	#include "sym.h"
+	
+
+	NodeSyntax * declaration_specifiers_current;
 %}
-%token IDENTIFIER CONSTANT STRING_LITERAL SIZEOF
+%union {
+	int i;
+	char * s;
+	double d;
+}
+/*%locations*/
+%token <s> IDENTIFIER STRING_LITERAL
+%token <i> CONSTANT_CHAR CONSTANT_INT
+%token <d> CONSTANT_DOUBLE
+%token SIZEOF
+/*%token IDENTIFIER CONSTANT_CHAR CONSTANT_INT CONSTANT_DOUBLE STRING_LITERAL SIZEOF*/
+
 %token PTR_OP INC_OP DEC_OP LEFT_OP RIGHT_OP LE_OP GE_OP EQ_OP NE_OP
 %token AND_OP OR_OP MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN ADD_ASSIGN
 %token SUB_ASSIGN LEFT_ASSIGN RIGHT_ASSIGN AND_ASSIGN
@@ -22,10 +32,13 @@
 %start translation_unit
 %%
 
+/* начало expression */
 primary_expression
-	: IDENTIFIER	{ $$ = createNodeSym($1); }
-	| CONSTANT	{ $$ = createNodeSym($1); }
-	| STRING_LITERAL	{ $$ = createNodeSym($1); }
+	: IDENTIFIER	{ $$ = createNodeSym(IDENTIFIER, $1); }
+	| CONSTANT_CHAR	{ $$ = createNodeVar(CONSTANT_CHAR, $1); }
+	| CONSTANT_INT	{ $$ = createNodeVar(CONSTANT_INT, $1); }
+	| CONSTANT_DOUBLE	{ $$ = createNodeVar(CONSTANT_DOUBLE, $1); }
+	| STRING_LITERAL	{ $$ = createNodeVar(STRING_LITERAL, $1); }
 	| '(' expression ')'	{ $$ = $2; }
 	;
 
@@ -160,11 +173,12 @@ expression
 constant_expression
 	: conditional_expression	{ $$ = createNode1(CONST_CK, $1); } /* ??? */
 	;
+/* конец expression */
 
 /* начало declarations */
-declaration
-	: declaration_specifiers ';'	{ $$ = createNode2(DECL_OP, $1, NULL); }
-	| declaration_specifiers init_declarator_list ';'	{ $$ = createNode2(DECL_OP, $1, $3); }
+declaration /* добавить элементы в SymTable, создать новый compaund */
+	: declaration_specifiers ';'	{ } /* а не поместится-ли суда typedef? */
+	| declaration_specifiers init_declarator_list ';'	{ appendDeclaration($1, $2); }
 	;
 
 declaration_specifiers /* сразу заполнять sym table надо? */
@@ -184,8 +198,8 @@ init_declarator_list
 	;
 
 init_declarator
-	: declarator
-	| declarator '=' initializer /* обращение к symtable */
+	: declarator	{ $$ = createNode2(NONE, $1, NULL); }
+	| declarator '=' initializer	{ $$ = createNode2(NONE, $1, $3); }
 	;
 
 storage_class_specifier
@@ -212,9 +226,9 @@ type_specifier
 	;
 
 struct_or_union_specifier
-	: struct_or_union IDENTIFIER '{' struct_declaration_list '}'
-	| struct_or_union '{' struct_declaration_list '}'
-	| struct_or_union IDENTIFIER
+	: struct_or_union IDENTIFIER '{' struct_declaration_list '}' { $$ = createNode2($1, $2, $3); }
+	| struct_or_union '{' struct_declaration_list '}' { $$ = createNode2($1, NULL, $3); }
+	| struct_or_union IDENTIFIER { $$ = createNode2($1, $2, NULL); }
 	;
 
 struct_or_union
@@ -223,8 +237,8 @@ struct_or_union
 	;
 
 struct_declaration_list
-	: struct_declaration
-	| struct_declaration_list struct_declaration
+	: struct_declaration { $$ = appendNodeN(createNodeN(NONE), $1); }
+	| struct_declaration_list struct_declaration { $$ = appendNodeN($1, $2); }
 	;
 
 struct_declaration
@@ -245,24 +259,24 @@ struct_declarator_list
 
 struct_declarator
 	: declarator
-	| ':' constant_expression
-	| declarator ':' constant_expression
+	| ':' constant_expression /* битовые поля */
+	| declarator ':' constant_expression /* битовые поля */
 	;
 
 enum_specifier
-	: ENUM '{' enumerator_list '}'
-	| ENUM IDENTIFIER '{' enumerator_list '}'
-	| ENUM IDENTIFIER
+	: ENUM '{' enumerator_list '}' { $$ = createNode2($1, NULL, $3); }
+	| ENUM IDENTIFIER '{' enumerator_list '}' { $$ = createNode2($1, $2, $3); }
+	| ENUM IDENTIFIER { $$ = createNode2($1, $2, NULL); }
 	;
 
 enumerator_list
-	: enumerator
-	| enumerator_list ',' enumerator
+	: enumerator { $$ = appendNodeN(createNodeN(NONE), $1); }
+	| enumerator_list ',' enumerator { $$ = appendNodeN($1, $2); }
 	;
 
 enumerator
-	: IDENTIFIER
-	| IDENTIFIER '=' constant_expression
+	: IDENTIFIER { $$ = createNode2(ENUMERATOR, $1, NULL); }
+	| IDENTIFIER '=' constant_expression { $$ = createNode2(ENUMERATOR, $1, $3); }
 	;
 
 type_qualifier
@@ -271,41 +285,41 @@ type_qualifier
 	;
 
 declarator
-	: pointer direct_declarator
-	| direct_declarator
+	: pointer direct_declarator	{ $$ = createNode2(NONE, $1, $2); }
+	| direct_declarator		{ $$ = createNode2(NONE, NULL, $1); }
 	;
 
 direct_declarator
-	: IDENTIFIER
-	| '(' declarator ')'
-	| direct_declarator '[' constant_expression ']'
-	| direct_declarator '[' ']'
-	| direct_declarator '(' parameter_type_list ')'
-	| direct_declarator '(' identifier_list ')'
-	| direct_declarator '(' ')'
+	: IDENTIFIER	{ $$ = createNode1($1, NULL); }
+	| '(' declarator ')'	{ $$ = createNode1(NONE, $2); }
+	| direct_declarator '[' constant_expression ']'	{ $$ = createNode2(ARRAY, $1, $3); }
+	| direct_declarator '[' ']'	{ $$ = createNode2(ARRAY, $1, NULL); }
+	| direct_declarator '(' parameter_type_list ')'	{ $$ = createNode2(FUNC_TYPED, $1, $3); }
+	| direct_declarator '(' identifier_list ')'	{ $$ = createNode2(FUNC, $1, $3); }
+	| direct_declarator '(' ')'	{ $$ = createNode2(FUNC, $1, NONE); }
 	;
 
 pointer
-	: '*'
-	| '*' type_qualifier_list
-	| '*' pointer
-	| '*' type_qualifier_list pointer
+	: '*'	{ $$ = appendNodeN(createNodeN(NONE), createNode1(POINTER, NULL)); }
+	| '*' type_qualifier_list	{ $$ = appendNodeN(createNodeN(NONE), createNode1(POINTER, $2)); }
+	| '*' pointer	{ $$ = appendNodeN($2, createNode1(POINTER, NULL)); }
+	| '*' type_qualifier_list pointer	{ $$ = appendNodeN($3, createNode1(POINTER, $2)); }
 	;
 
 type_qualifier_list
-	: type_qualifier
-	| type_qualifier_list type_qualifier
+	: type_qualifier	{ $$ = appendNodeN(createNodeN(NONE), $1); }
+	| type_qualifier_list type_qualifier	{ $$ = appendNodeN($1, $2); }
 	;
 
 
 parameter_type_list
 	: parameter_list
-	| parameter_list ',' ELLIPSIS
+/* 	| parameter_list ',' ELLIPSIS поддержка функций с неограниченным количеством аргументов */
 	;
 
 parameter_list
-	: parameter_declaration
-	| parameter_list ',' parameter_declaration
+	: parameter_declaration	{ $$ = appendNodeN(createNodeN(NONE), $1); }
+	| parameter_list ',' parameter_declaration { $$ = appendNodeN($1, $3); }
 	;
 
 parameter_declaration
@@ -315,8 +329,8 @@ parameter_declaration
 	;
 
 identifier_list
-	: IDENTIFIER
-	| identifier_list ',' IDENTIFIER
+	: IDENTIFIER	{ $$ = appendNodeN(createNodeN(NONE), createNodeSym($1)); }
+	| identifier_list ',' IDENTIFIER { $$ = appendNodeN($1, createNodeSym($3)); }
 	;
 
 type_name
@@ -344,15 +358,17 @@ direct_abstract_declarator
 
 initializer
 	: assignment_expression
-	| '{' initializer_list '}'
-	| '{' initializer_list ',' '}'
+	| '{' initializer_list '}' { $$ = $2; }
+	| '{' initializer_list ',' '}' { $$ = $2; }
 	;
 
 initializer_list
-	: initializer
-	| initializer_list ',' initializer
+	: initializer { $$ = appendNodeN(createNodeN(INITIALIZER_LIST), $1); }
+	| initializer_list ',' initializer { $$ = appendNodeN($1, $3); }
 	;
+/* конец declarations */
 
+/* начало statement */
 statement
 	: labeled_statement
 	| compound_statement
@@ -362,17 +378,19 @@ statement
 	| jump_statement
 	;
 
-labeled_statement
-	: IDENTIFIER ':' statement
-	| CASE constant_expression ':' statement
-	| DEFAULT ':' statement
+labeled_statement /* игнорирование меток */
+	: IDENTIFIER ':' statement	{ $$ = $3; }
+	| CASE constant_expression ':' statement	{ $$ = $4; }
+	| DEFAULT ':' statement	{ $$ = $3; }
 	;
 
 compound_statement /* добавить таблицу в symTableStack */
-	: '{' '}'	{ $$ = createNode2(COMPAUND, NULL, NULL); }
-	| '{' statement_list '}'	{ $$ = createNode2(COMPAUND, NULL, $3); }
-	| '{' declaration_list '}'	{ $$ = createNode2(COMPAUND, $2, NULL); }
-	| '{' declaration_list statement_list '}'	{ $$ = createNode2(COMPAUND, $2, $3); }
+	: '{' '}'	{ $$ = createNode1(COMPOUND_STATEMENT, NULL); }
+	| '{' compound_statement_nested '}'	{ $$ = $2; }
+
+compound_statement_nested //объявления в середине функции
+	: statement_list	{ $$ = createNode1(COMPOUND_STATEMENT, $1); }
+	| declaration_list statement_list { $$ = createNode1(COMPOUND_STATEMENT, $2); }
 	;
 
 declaration_list
@@ -381,12 +399,12 @@ declaration_list
 	;
 
 statement_list
-	: statement	{ $$ = appendNodeN(createNodeN(NONE), $1); }
+	: statement	{ $$ = appendNodeN(createNodeN(STATEMENT_LIST), $1); }
 	| statement_list statement	{ $$ = appendNodeN($1, $2); }
 	;
 
 expression_statement
-	: ';'
+	: ';' { $$ = NULL; }
 	| expression ';'
 	;
 
@@ -397,35 +415,34 @@ selection_statement
 	;
 
 iteration_statement
-	: WHILE '(' expression ')' statement	{ $$ = createNode2(WHILE_PRE, $3, $5); }
-	| DO statement WHILE '(' expression ')' ';'	{ $$ = createNode2(WHILE_POST, $5, $2); }
+	: WHILE '(' expression ')' statement	{ $$ = createNode2($1, $3, $5); }
+	| DO statement WHILE '(' expression ')' ';'	{ $$ = createNode2(DO_WHILE, $5, $2); }
 	| FOR '(' expression_statement expression_statement ')' statement	{ $$ = createNode4(FOR, $3, $4, NULL, $6); }
 	| FOR '(' expression_statement expression_statement expression ')' statement	{ $$ = createNode4(FOR, $3, $4, $5, $7); }
 	;
 
 jump_statement
-	: GOTO IDENTIFIER ';'	{ $$ = createNode1(GOTO, createNodeSym($2)); }
-	| CONTINUE ';'	{ $$ = createNode1(GOTO, NULL); }
-	| BREAK ';'	{ $$ = createNode1(BREAK, NULL); }
-	| RETURN ';'	{ $$ = createNode1(RETURN, NULL); }
-	| RETURN expression ';'	{ $$ = createNode1(RETURN, $2); }
+	: GOTO IDENTIFIER ';'	{ $$ = createNode1($1, createNodeSym($2)); }
+	| CONTINUE ';'	{ $$ = createNode0($1); }
+	| BREAK ';'	{ $$ = createNode0($1); }
+	| RETURN ';'	{ $$ = createNode0($1); }
+	| RETURN expression ';'	{ $$ = createNode1($1, $2); }
 	;
+/* конец statement */
 
 translation_unit
-	: external_declaration	{ astRoot = appendNodeN(createNodeN(NONE), $1); }
-	| translation_unit external_declaration	{ astRoot = appendNodeN(astRoot, $2); }
+	: external_declaration	{  }
+	| translation_unit external_declaration	{  }
 	;
 
 external_declaration
-	: function_definition
-	| declaration
+	: function_definition	{  }
+	| declaration	{  }
 	;
 
 function_definition
-	: declaration_specifiers declarator declaration_list compound_statement { $$ = createNode4(DECL_OP, $1, $2, $3, $4); }
-	| declaration_specifiers declarator compound_statement { $$ = createNode4(DECL_OP, $1, $2, NULL, $3); }
-	| declarator declaration_list compound_statement { $$ = createNode4(DECL_OP, NULL, $1, $2, $3); }
-	| declarator compound_statement { $$ = createNode4(DECL_OP, NULL, $1, NULL, $2); }
+	: declaration_specifiers declarator compound_statement	{ /* создаать символ */ }
+	| declarator compound_statement	{ /* создаать символ */ }
 	;
 
 %%

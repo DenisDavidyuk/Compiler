@@ -22,16 +22,25 @@
 		</Compiler>
 		<Unit filename="ast.c">
 			<Option compilerVar="CC" />
+			<Option compile="0" />
 		</Unit>
 		<Unit filename="ast.h" />
-		<Unit filename="c.l">
-			<Option compile="1" />
-		</Unit>
+		<Unit filename="c.l" />
 		<Unit filename="c.y">
 			<Option compile="1" />
 		</Unit>
+		<Unit filename="enums.c">
+			<Option compilerVar="CC" />
+			<Option compile="0" />
+		</Unit>
+		<Unit filename="enums.h" />
 		<Unit filename="main.c">
 			<Option compilerVar="CC" />
+			<Option compile="0" />
+		</Unit>
+		<Unit filename="sym.c">
+			<Option compilerVar="CC" />
+			<Option compile="0" />
 		</Unit>
 		<Unit filename="sym.h" />
 		<Extensions>

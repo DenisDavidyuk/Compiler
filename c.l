@@ -1,3 +1,16 @@
+%{
+	#include <stdio.h>
+	#include "c.parser.h"
+
+	void count();
+	/*typedef union {
+		char * s,
+		int i,
+		char c,
+		double d
+	} YYSTYPE;*/
+%}
+/*%option bison-bridge bison-locations*/
 D			[0-9]
 L			[a-zA-Z_]
 H			[a-fA-F0-9]
@@ -5,12 +18,7 @@ E			[Ee][+-]?{D}+
 FS			(f|F|l|L)
 IS			(u|U|l|L)*
 
-%{
-#include <stdio.h>
-#include "c.parser.h"
 
-void count();
-%}
 
 %%
 "/*"			{ comment(); }
@@ -51,16 +59,16 @@ void count();
 
 {L}({L}|{D})*		{ count(); return(check_type()); }
 
-0[xX]{H}+{IS}?		{ count(); return(CONSTANT); }
-0{D}+{IS}?		{ count(); return(CONSTANT); }
-{D}+{IS}?		{ count(); return(CONSTANT); }
-L?'(\\.|[^\\'])+'	{ count(); return(CONSTANT); }
+0[xX]{H}+{IS}?		{ count(); yylval.i = strtol(yytext, NULL, 16); return(CONSTANT_INT); }
+0{D}+{IS}?		{ count(); yylval.i = strtol(yytext, NULL, 8); return(CONSTANT_INT); }
+{D}+{IS}?		{ count(); yylval.i = strtol(yytext, NULL, 10); return(CONSTANT_INT); }
+L?'(\\.|[^\\'])+'	{ count(); yylval.c = 42; return(CONSTANT_CHAR); }
 
-{D}+{E}{FS}?		{ count(); return(CONSTANT); }
-{D}*"."{D}+({E})?{FS}?	{ count(); return(CONSTANT); }
-{D}+"."{D}*({E})?{FS}?	{ count(); return(CONSTANT); }
+{D}+{E}{FS}?		{ count(); yylval.d = strtod(yytext, NULL); return(CONSTANT_DOUBLE); }
+{D}*"."{D}+({E})?{FS}?	{ count(); yylval.d = strtod(yytext, NULL); return(CONSTANT_DOUBLE); }
+{D}+"."{D}*({E})?{FS}?	{ count(); yylval.d = strtod(yytext, NULL); return(CONSTANT_DOUBLE); }
 
-L?\"(\\.|[^\\"])*\"	{ count(); return(STRING_LITERAL); }
+L?\"(\\.|[^\\"])*\"	{ count(); yylval->s = malloc(sizeof(char) * yyleng); strcpy(yylval->s, yytext); return(STRING_LITERAL); }
 
 "..."			{ count(); return(ELLIPSIS); }
 ">>="			{ count(); return(RIGHT_ASSIGN); }
