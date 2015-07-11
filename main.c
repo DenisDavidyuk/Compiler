@@ -5,6 +5,7 @@
 #include "enums.h"
 #include "ast.h"
 #include "sym.h"
+#include "asm.h"
 
 const char * help =
 "compiler\n\
@@ -21,7 +22,7 @@ extern int yylex();
 extern int yyparse();
 
 //int argc = 3;
-//char * argv[] = {"compiler", "-s", "test.c"};
+//char * argv[] = {"compiler", "-c", "test.c"};
 
 //NodeSyntax * astRoot;
 SymTable * symTable;
@@ -60,6 +61,18 @@ int main(int argc, char ** argv)
             //printNodeSyntax(astRoot, 0);
             //printSymTable(yylval.symTable, 0);
             printSymTable(symTable, 0);
+        }
+        else if (strcmp(argv[1], "-c") == 0) {
+            yyin = fopen(argv[2], "r");
+            int i;
+            if ((i = yyparse())) {
+                printf("Something wrong");
+                return i;
+            }
+            printSymTable(symTable, 0);
+            AsmCode * code = newAsmCode();
+            asmSymTable(code, symTable);
+            writeAsmCode(code);
         }
         else {
             fprintf(stderr, help);

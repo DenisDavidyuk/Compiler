@@ -38,6 +38,7 @@ SymTable * appendToSymTable(SymTable * table, Sym * sym) {
 }
 
 SymTable * mergeSymTables(SymTable * table, const SymTable * tablenew) {
+    if (!tablenew) return table;
     for (int i = 0; i < tablenew->length; i++)
         appendToSymTable(table, tablenew->syms[i]);
     return table;

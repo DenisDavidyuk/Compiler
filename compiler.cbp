@@ -20,6 +20,13 @@
 		<Compiler>
 			<Add option="-Wall" />
 		</Compiler>
+		<Unit filename="asm.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="asm.h" />
+		<Unit filename="asm_const.c">
+			<Option compilerVar="CC" />
+		</Unit>
 		<Unit filename="ast.c">
 			<Option compilerVar="CC" />
 		</Unit>
