@@ -4,13 +4,17 @@
 	#include "ast.h"
 	#include "sym.h"
 	#define YYDEBUG 1
-	extern NodeSyntax * astRoot;
+	//extern NodeSyntax * astRoot;
+	extern SymTable * symTable;
 %}
 %union {
 	float d;
 	int i;
 	char * s;
-	void * node;
+	//NodeSyntax * nodeSyntax;
+	//SymTable * symTable;
+	void * nodeSyntax;
+	void * symTable;
 }
 /*%locations*/
 %token <s> IDENTIFIER STRING_LITERAL CONSTANT_CHAR
@@ -29,27 +33,27 @@
 
 %token CASE DEFAULT IF ELSE SWITCH WHILE DO FOR GOTO CONTINUE BREAK RETURN
 
-%type <node> primary_expression postfix_expression argument_expression_list
-%type <node> unary_expression cast_expression multiplicative_expression additive_expression
-%type <node> shift_expression relational_expression equality_expression and_expression
-%type <node> exclusive_or_expression inclusive_or_expression logical_and_expression
-%type <node> logical_or_expression conditional_expression assignment_expression
-%type <node> expression constant_expression
-%type <node> declaration_specifiers init_declarator_list init_declarator type_specifier struct_or_union_specifier
-%type <node> struct_declaration_list struct_declaration specifier_qualifier_list
-%type <node> struct_declarator_list struct_declarator enum_specifier enumerator_list
-%type <node> enumerator declarator direct_declarator pointer type_qualifier_list
-%type <node> parameter_type_list parameter_list parameter_declaration identifier_list
-%type <node> type_name abstract_declarator direct_abstract_declarator initializer
-%type <node> initializer_list
-%type <node> statement labeled_statement compound_statement /*compound_statement_nested*/
-%type <node> /*declaration_list*/ statement_list expression_statement selection_statement
-%type <node> iteration_statement jump_statement
+%type <nodeSyntax> primary_expression postfix_expression argument_expression_list
+%type <nodeSyntax> unary_expression cast_expression multiplicative_expression additive_expression
+%type <nodeSyntax> shift_expression relational_expression equality_expression and_expression
+%type <nodeSyntax> exclusive_or_expression inclusive_or_expression logical_and_expression
+%type <nodeSyntax> logical_or_expression conditional_expression assignment_expression
+%type <nodeSyntax> expression constant_expression
+%type <nodeSyntax> declaration_specifiers init_declarator_list init_declarator type_specifier struct_or_union_specifier
+%type <nodeSyntax> struct_declaration_list struct_declaration specifier_qualifier_list
+%type <nodeSyntax> struct_declarator_list struct_declarator enum_specifier enumerator_list
+%type <nodeSyntax> enumerator declarator direct_declarator pointer type_qualifier_list
+%type <nodeSyntax> parameter_type_list parameter_list parameter_declaration identifier_list
+%type <nodeSyntax> type_name abstract_declarator direct_abstract_declarator initializer
+%type <nodeSyntax> initializer_list
+%type <nodeSyntax> statement labeled_statement compound_statement /*compound_statement_nested*/
+%type <nodeSyntax> /*declaration_list*/ statement_list expression_statement selection_statement
+%type <nodeSyntax> iteration_statement jump_statement
 
 %type <i> unary_operator assignment_operator storage_class_specifier
 %type <i> struct_or_union type_qualifier
 
-%type <node> declaration translation_unit external_declaration function_definition
+%type <symTable> declaration translation_unit external_declaration function_definition declaration_list
 
 %start translation_unit
 %%
@@ -199,8 +203,8 @@ constant_expression
 
 /* начало declarations */
 declaration /* добавить элементы в SymTable, создать новый compaund */
-	: declaration_specifiers ';'	{ $$ = NULL; }
-	| declaration_specifiers init_declarator_list ';'	{ $$ = NULL; appendDeclaration($1, $2); /*$$ = createNode2(DECLARATION, $1, $2);*/ }
+	: declaration_specifiers ';'	{ $$ = createSymTable(); }
+	| declaration_specifiers init_declarator_list ';'	{ $$ = declarationToSymTable($1, $2); /*$$ = createNode2(DECLARATION, $1, $2);*/ }
 	//| declaration_specifiers init_declarator_list ';'	{ $$ = createNode2(DECLARATION, $1, $2); }
 	;
 
@@ -317,9 +321,9 @@ direct_declarator
 	| '(' declarator ')'	{ $$ = $2; }
 	| direct_declarator '[' constant_expression ']'	{ $$ = appendNodeN($1, createNode1(ARRAY, $3)); }
 	| direct_declarator '[' ']'	{ $$ = appendNodeN($1, createNode1(ARRAY, NULL)); }
-	| direct_declarator '(' parameter_type_list ')'	{ $$ = appendNodeN($1, createNode1(FUNC_DECLARATION, $3)); }
+	| direct_declarator '(' parameter_type_list ')'	{ $$ = appendNodeN($1, $3); }
 	//| direct_declarator '(' identifier_list ')'	{ $$ = appendNodeN($1, createNode1(FUNC_CALL, $3)); }
-	| direct_declarator '(' ')'	{ $$ = appendNodeN($1, createNode1(FUNC_DECLARATION, NULL)); }
+	| direct_declarator '(' ')'	{ $$ = appendNodeN($1, createNodeN(PARAMETER_LIST)); }
 	;
 
 pointer
@@ -399,7 +403,7 @@ statement
 	| selection_statement
 	| iteration_statement
 	| jump_statement
-	| declaration //не std-c89
+	//| declaration { $$ = NULL; } //не std-c89
 	;
 
 labeled_statement /* игнорирование меток */
@@ -408,11 +412,15 @@ labeled_statement /* игнорирование меток */
 	| DEFAULT ':' statement	{ $$ = $3; }
 	;
 
-compound_statement /* добавить таблицу в symTableStack */
+compound_statement
 	: '{' '}'	{ $$ = createNode1(COMPOUND_STATEMENT, NULL); }
-	| '{' statement_list '}'	{ $$ = createNode1(COMPOUND_STATEMENT, $2); }
+	| '{' statement_list '}'	{ $$ = createNode2(COMPOUND_STATEMENT, NULL, $2); }
+	
+	| '{' declaration_list '}'	{ $$ = createNode2(COMPOUND_STATEMENT, $2, NULL); }
+	| '{' declaration_list statement_list '}'	{ $$ = createNode2(COMPOUND_STATEMENT, $2, $3); }
+	;
 
-/*compound_statement // добавить таблицу в symTableStack
+/*compound_statement
 	: '{' '}'	{ $$ = createNode1(COMPOUND_STATEMENT, NULL); }
 	| '{' compound_statement_nested '}'	{ $$ = $2; }
 
@@ -420,12 +428,12 @@ compound_statement_nested //объявления в середине функц�
 	: statement_list	{ $$ = createNode1(COMPOUND_STATEMENT, $1); }
 	| declaration_list	{ $$ = createNode1(COMPOUND_STATEMENT, NULL); }
 	| declaration_list statement_list { $$ = createNode1(COMPOUND_STATEMENT, $2); }
-	;
+	;*/
 
 declaration_list
-	: declaration	{ $$ = appendNodeN(createNodeN(NONE), $1); }
-	| declaration_list declaration	{ $$ = appendNodeN($1, $2); }
-	;*/
+	: declaration	{ $$ = mergeSymTables(createSymTable(), $1); }
+	| declaration_list declaration	{ $$ = mergeSymTables($1, $2); }
+	;
 
 statement_list
 	: statement	{ $$ = appendNodeN(createNodeN(STATEMENT_LIST), $1); }
@@ -460,18 +468,18 @@ jump_statement
 /* конец statement */
 
 translation_unit /* добавить символ external_declaration в таблицу символов */
-	: external_declaration	{ astRoot = appendNodeN(createNodeN(NONE), $1); }
-	| translation_unit external_declaration	{ astRoot = appendNodeN(astRoot, $2); }
+	: external_declaration	{ symTable = $$ = mergeSymTables(createSymTable(), $1); /*astRoot = appendNodeN(createNodeN(NONE), $1);*/ }
+	| translation_unit external_declaration	{ symTable = $$ = mergeSymTables($1, $2); /*astRoot = appendNodeN(astRoot, $2);*/ }
 	;
 
 external_declaration
-	: function_definition
+	: function_definition	{ $$ = appendToSymTable(createSymTable(), $1); }
 	| declaration
 	;
 
 function_definition
-	: declaration_specifiers declarator compound_statement	{ $$ = createNode3(FUNCTION_DEFINITION, $1, $2, $3); }
-	| declarator compound_statement	{ $$ = createNode3(FUNCTION_DEFINITION, NULL, $1, $2); }
+	: declaration_specifiers declarator compound_statement	{ $$ = functionDefinitionToSymTable($1, $2, $3); }
+	| declarator compound_statement	{ $$ = functionDefinitionToSymTable(NULL, $1, $2); }
 	;
 
 %%

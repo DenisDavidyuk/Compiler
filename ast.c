@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h>
 #include "ast.h"
 #include "enums.h"
 
@@ -139,11 +140,50 @@ NodeVal * createNodeValString(char * value) {
     return node;
 }
 
+int compareNodeN(NodeN * node1, NodeN * node2) {
+    if (node1->length != node2->length) return 0;
+    if (node1->action != node2->action) return 0;
+    int t = 1;
+    for (int i = 0; i < node1->length; i++)
+        t &= node1 == NULL && node2 == NULL ||
+            compareNodeSyntax(node1->nodes[i], node2->nodes[i]);
+    return t;
+}
+
+int compareNodeSym(NodeSym * node1, NodeSym * node2) {
+    return strcmp(node1->name, node2->name) == 0;
+}
+
+int compareNodeVal(NodeVal * node1, NodeVal * node2) {
+    if (node1->action != node2->action) return 0;
+    switch (node1->action) {
+        case CONSTANT_CHAR:
+        case CONSTANT_INT: return node1->value.i == node2->value.i;
+        case CONSTANT_DOUBLE: return node1->value.d == node2->value.d;
+        case STRING_LITERAL: return strcmp(node1->value.s, node2->value.s) == 0;
+        default: assert(0);
+    }
+}
+
+int compareNodeSyntax(NodeSyntax * node1, NodeSyntax * node2) {
+    int t = node1->type == node2->type;
+    if (t) switch (node1->type) {
+        case NODE_N: return compareNodeN((NodeN *)node1, (NodeN *)node2);
+        case NODE_SYM: return compareNodeSym((NodeSym *)node1, (NodeSym *)node2);
+        case NODE_VAL: return compareNodeVal((NodeVal *)node1, (NodeVal *)node2);
+        default: assert(0);
+    }
+}
+
 extern void printfl(int level);
 
 void printNodeN(NodeN * node, int level) {
     printfl(level);
-    printf("%s, length: %d", enum_tostring(node->action), node->length);
+    if (node->length == 0)
+        printf("%s", enum_tostring(node->action));
+    else
+        if (node->action == NONE) printf("length: %d", node->length);
+        else printf("%s, length: %d", enum_tostring(node->action), node->length);
     for (int i = 0; i < node->length; i++)
         printNodeSyntax(node->nodes[i], level + 1);
 }
@@ -157,18 +197,18 @@ void printNodeVal(NodeVal * node, int level) {
     printfl(level);
     //printf("%s", enum_tostring(node->action));
     switch (node->action) {
-case CONSTANT_CHAR: printf("%c (char)", node->value.i); break;
-case CONSTANT_INT: printf("%d (int)", node->value.i); break;
-case CONSTANT_DOUBLE: printf("%f (double)", node->value.d); break;
-case STRING_LITERAL: printf("%s", node->value.s); break;
-default: assert(0);
+        case CONSTANT_CHAR: printf("%c (char)", node->value.i); break;
+        case CONSTANT_INT: printf("%d (int)", node->value.i); break;
+        case CONSTANT_DOUBLE: printf("%f (double)", node->value.d); break;
+        case STRING_LITERAL: printf("%s", node->value.s); break;
+        default: assert(0);
     }
 }
 
 void printNodeSyntax(NodeSyntax * node, int level) {
     if (!node) {
         printfl(level);
-        printf("NULL NODE");
+        printf("NULL (no syntax node)");
         return;
     }
     if (node < 2000) {

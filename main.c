@@ -4,6 +4,7 @@
 #include <assert.h>
 #include "enums.h"
 #include "ast.h"
+#include "sym.h"
 
 const char * help =
 "compiler\n\
@@ -22,7 +23,8 @@ extern int yyparse();
 //int argc = 3;
 //char * argv[] = {"compiler", "-s", "test.c"};
 
-NodeSyntax * astRoot;
+//NodeSyntax * astRoot;
+SymTable * symTable;
 
 int main(int argc, char ** argv)
 {
@@ -55,7 +57,9 @@ int main(int argc, char ** argv)
                 printf("Something wrong");
                 return i;
             }
-            printNodeSyntax(astRoot, 0);
+            //printNodeSyntax(astRoot, 0);
+            //printSymTable(yylval.symTable, 0);
+            printSymTable(symTable, 0);
         }
         else {
             fprintf(stderr, help);
@@ -73,4 +77,17 @@ void printfl(int level) {
     printf("\n");
     while(level--)
         printf("  ");
+}
+
+void error(const char * message) {
+    fprintf(stderr, message);
+    exit(EXIT_FAILURE);
+}
+
+char * randomString() {
+    char * res = malloc(sizeof(char) * 20);
+    for (int i = 0; i < 19; i++)
+        res[i] = rand() % 26 + 'a';
+    res[19] = 0;
+    return res;
 }

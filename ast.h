@@ -53,6 +53,8 @@ NodeVal * createNodeValDouble(double value);
 NodeVal * createNodeValString(char * value);
 NodeSym * createNodeSym(char * name);
 
+int compareNodeSyntax(NodeSyntax * node1, NodeSyntax * node2);
+
 void printNodeN(NodeN * node, int level);
 void printNodeSym(NodeSym * node, int level);
 void printNodeVal(NodeVal * node, int level);

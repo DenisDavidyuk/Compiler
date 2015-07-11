@@ -1,6 +1,7 @@
 #ifndef SYM_H_INCLUDED
 #define SYM_H_INCLUDED
 #include "ast.h"
+#include "main.h"
 
 typedef enum SymKind {
     SYM_FUNC,
@@ -11,6 +12,7 @@ typedef enum SymKind {
 typedef struct Sym {
     SymKind kind;
     char * name;
+    NodeSyntax * type;
 } Sym;
 
 typedef struct SymTable {
@@ -41,13 +43,16 @@ typedef struct SymVar {
 
 SymTable * createSymTable();
 SymTable * appendToSymTable(SymTable *, Sym *);
+SymTable * mergeSymTables(SymTable *, const SymTable *);
 
-Sym * appendDeclaration(NodeN * declaration_specifiers, NodeN * init_declarator_list);
+SymTable * declarationToSymTable(NodeN * declaration_specifiers, NodeN * init_declarator_list);
+SymFunc * functionDefinitionToSymTable(NodeN * declaration_specifiers, NodeN * declarator, NodeN * compound_statement);
 
-SymFunc * createSymFunc(char * name, NodeSyntax * type, NodeSyntax * compound);;
+SymFunc * createSymFunc(char * name, NodeSyntax * type, SymTable * table, NodeSyntax * compound);;
 SymType * createSymType(char * name, NodeSyntax * type);
 SymVar * createSymVar(char * name, NodeSyntax * type, NodeSyntax * init);
 
+void printSymTable(SymTable * table, int level);
 void printSymFunc(SymFunc * sym, int level);
 void printSymType(SymType * sym, int level);
 void printSymVar(SymVar * sym, int level);
