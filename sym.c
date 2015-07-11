@@ -10,7 +10,7 @@ SymTable * createSymTable() {
     return table;
 }
 
-SymTable * appendSymTable(SymTable * table, Sym * sym) {
+SymTable * appendToSymTable(SymTable * table, Sym * sym) {
     table->length++;
     table->syms = realloc(table->syms, sizeof(Sym *) * table->length);
     table->syms[table->length - 1] = sym;

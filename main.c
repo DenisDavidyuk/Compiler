@@ -3,6 +3,7 @@
 #include <string.h>
 #include <assert.h>
 #include "enums.h"
+#include "ast.h"
 
 const char * help =
 "compiler\n\
@@ -20,6 +21,8 @@ extern int yyparse();
 
 //int argc = 3;
 //char * argv[] = {"compiler", "-s", "test.c"};
+
+NodeSyntax * astRoot;
 
 int main(int argc, char ** argv)
 {
@@ -52,7 +55,7 @@ int main(int argc, char ** argv)
                 printf("Something wrong");
                 return i;
             }
-            //
+            printNodeSyntax(astRoot, 0);
         }
         else {
             fprintf(stderr, help);

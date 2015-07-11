@@ -73,25 +73,10 @@ const char * enum_tostring(int v) {
     def(BREAK)
     def(RETURN)
 
-    def(NONE)
-    def(INC_PREF)
-    def(INC_SUFF)
-    def(DEC_PREF)
-    def(DEC_SUFF)
-    def(ARR_OP)
-    def(CALL_OP)
-    def(FIELD_OP)
-    def(CAST_OP)
-    def(TERNAL_OP)
-    def(CONST_CK)
-    def(DECL_OP)
-    def(DO_WHILE)
-    def(COMPOUND_STATEMENT)
-    def(STATEMENT_LIST)
-    def(INITIALIZER_LIST)
-    def(ENUMERATOR)
+#include "enums_list.h"
 
     default:
+        printf("Bad enum: %d\n", v);
         assert(0);
     }
 }

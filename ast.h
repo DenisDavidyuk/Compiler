@@ -10,7 +10,7 @@ typedef enum NodeType {
     NODE_4,
     NODE_N,
     NODE_SYM,
-    NODE_VAR
+    NODE_VAL
 } NodeType;
 
 typedef int NodeAction;
@@ -53,11 +53,15 @@ typedef struct NodeSym {
     char * name;
 } NodeSym;
 
-typedef struct NodeVar {
+typedef struct NodeVal {
     NodeType type;
     NodeAction action;
-    YYSTYPE value;
-} NodeVar;
+    union {
+        int i;
+        double d;
+        char * s;
+    } value;
+} NodeVal;
 
 typedef struct NodeN {
     NodeType type;
@@ -73,8 +77,11 @@ Node3 * createNode3(NodeAction action, NodeSyntax * node1, NodeSyntax * node2, N
 Node4 * createNode4(NodeAction action, NodeSyntax * node1, NodeSyntax * node2, NodeSyntax * node3, NodeSyntax * node4);
 NodeN * createNodeN(NodeAction action);
 NodeN * appendNodeN(NodeN * NodeN, NodeSyntax * node);
+NodeVal * createNodeValChar(char * value);
+NodeVal * createNodeValInt(int value);
+NodeVal * createNodeValDouble(double value);
+NodeVal * createNodeValString(char * value);
 NodeSym * createNodeSym(char * name);
-NodeVar * createNodeVar(NodeAction action, YYSTYPE value);
 
 void printNode0(Node0 * node, int level);
 void printNode1(Node1 * node, int level);
@@ -83,6 +90,7 @@ void printNode3(Node3 * node, int level);
 void printNode4(Node4 * node, int level);
 void printNodeN(NodeN * node, int level);
 void printNodeSym(NodeSym * node, int level);
+void printNodeVal(NodeVal * node, int level);
 void printNodeSyntax(NodeSyntax * node, int level);
 
 #endif // AST_H_INCLUDED

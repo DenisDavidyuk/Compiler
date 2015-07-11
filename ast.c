@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include "ast.h"
+#include "enums.h"
 
 Node0 * createNode0(NodeAction action) {
     Node0 * node = malloc(sizeof(Node0));
@@ -58,6 +59,7 @@ NodeN * createNodeN(NodeAction action) {
 }
 
 NodeN * appendNodeN(NodeN * nodeBase, NodeSyntax * nodeNew) {
+    if (!nodeNew) return nodeBase;
     NodeN * node = nodeBase;
     assert(node->type == NODE_N);
     node->length++;
@@ -73,11 +75,38 @@ NodeSym * createNodeSym(char * name) {
     return node;
 }
 
-NodeVar * createNodeVar(NodeAction action, YYSTYPE value) {
-    NodeVar * node = malloc(sizeof(NodeVar));
-    node->type = NODE_VAR;
-    node->action = action;
-    node->value = value;
+NodeVal * createNodeValChar(char * value) {
+    NodeVal * node = malloc(sizeof(NodeVal));
+    node->type = NODE_VAL;
+    node->action = CONSTANT_CHAR;
+    node->value.i = value[1];
+// TODO (Δενθρ#1#): Escape check
+    free(value);
+    return node;
+}
+
+NodeVal * createNodeValInt(int value) {
+    NodeVal * node = malloc(sizeof(NodeVal));
+    node->type = NODE_VAL;
+    node->action = CONSTANT_INT;
+    node->value.i = value;
+    return node;
+}
+
+NodeVal * createNodeValDouble(double value) {
+    NodeVal * node = malloc(sizeof(NodeVal));
+    node->type = NODE_VAL;
+    node->action = CONSTANT_DOUBLE;
+    node->value.d = value;
+    return node;
+}
+
+NodeVal * createNodeValString(char * value) {
+    NodeVal * node = malloc(sizeof(NodeVal));
+    node->type = NODE_VAL;
+    node->action = STRING_LITERAL;
+    node->value.s = value;
+// TODO (Δενθρ#1#): Escape check
     return node;
 }
 
@@ -85,25 +114,25 @@ extern void printfl(int level);
 
 void printNode0(Node0 * node, int level) {
     printfl(level);
-    printf("%s, length: 0", enum_tostring(node->action));
+    printf("%s, Node0", enum_tostring(node->action));
 }
 
 void printNode1(Node1 * node, int level) {
     printfl(level);
-    printf("%s, length: 1", enum_tostring(node->action));
+    printf("%s, Node1", enum_tostring(node->action));
     printNodeSyntax(node->node, level + 1);
 }
 
 void printNode2(Node2 * node, int level) {
     printfl(level);
-    printf("%s, length: 2", enum_tostring(node->action));
+    printf("%s, Node2", enum_tostring(node->action));
     printNodeSyntax(node->node1, level + 1);
     printNodeSyntax(node->node2, level + 1);
 }
 
 void printNode3(Node3 * node, int level) {
     printfl(level);
-    printf("%s, length: 3", enum_tostring(node->action));
+    printf("%s, Node3", enum_tostring(node->action));
     printNodeSyntax(node->node1, level + 1);
     printNodeSyntax(node->node2, level + 1);
     printNodeSyntax(node->node3, level + 1);
@@ -111,7 +140,7 @@ void printNode3(Node3 * node, int level) {
 
 void printNode4(Node4 * node, int level) {
     printfl(level);
-    printf("%s, length: 4", enum_tostring(node->action));
+    printf("%s, Node4", enum_tostring(node->action));
     printNodeSyntax(node->node1, level + 1);
     printNodeSyntax(node->node2, level + 1);
     printNodeSyntax(node->node3, level + 1);
@@ -127,18 +156,17 @@ void printNodeN(NodeN * node, int level) {
 
 void printNodeSym(NodeSym * node, int level) {
     printfl(level);
-    printf("symbol: %s", node->name);
+    printf("%s (symbol)", node->name);
 }
 
-void printNodeVar(NodeVar * node, int level) {
+void printNodeVal(NodeVal * node, int level) {
     printfl(level);
-    printf("%s", enum_tostring(node->action));
-    printfl(level + 1);
+    //printf("%s", enum_tostring(node->action));
     switch (node->action) {
-/*case CONSTANT_CHAR: printf("%c", node->value.c); break;
-case CONSTANT_INT: printf("%d", node->value.i); break;
-case CONSTANT_DOUBLE: printf("%lf", node->value.d); break;
-case STRING_LITERAL: printf("%s", node->value.s); break;*/
+case CONSTANT_CHAR: printf("%c (char)", node->value.i); break;
+case CONSTANT_INT: printf("%d (int)", node->value.i); break;
+case CONSTANT_DOUBLE: printf("%f (double)", node->value.d); break;
+case STRING_LITERAL: printf("%s", node->value.s); break;
 default: assert(0);
     }
 }
@@ -150,13 +178,14 @@ void printNodeSyntax(NodeSyntax * node, int level) {
         return;
     }
     switch (node->type) {
+        case NODE_0: printNode0((Node0 *)node, level); break;
         case NODE_1: printNode1((Node1 *)node, level); break;
         case NODE_2: printNode2((Node2 *)node, level); break;
         case NODE_3: printNode3((Node3 *)node, level); break;
         case NODE_4: printNode4((Node4 *)node, level); break;
         case NODE_N: printNodeN((NodeN *)node, level); break;
         case NODE_SYM: printNodeSym((NodeSym *)node, level); break;
-        case NODE_VAR: printNodeVar((NodeVar *)node, level); break;
+        case NODE_VAL: printNodeVal((NodeVal *)node, level); break;
         default: assert(0);
     }
 }

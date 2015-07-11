@@ -40,7 +40,7 @@ typedef struct SymVar {
 } SymVar;
 
 SymTable * createSymTable();
-SymTable * appendSymTable(SymTable *, Sym *);
+SymTable * appendToSymTable(SymTable *, Sym *);
 
 void appendDeclaration(NodeSyntax * declaration_specifiers, NodeN * init_declarator_list);
 

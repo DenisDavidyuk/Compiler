@@ -1,14 +1,12 @@
 %{
 	#include <stdio.h>
+	#include <stdlib.h>
+	#include <string.h>
 	#include "c.parser.h"
 
 	void count();
-	/*typedef union {
-		char * s,
-		int i,
-		char c,
-		double d
-	} YYSTYPE;*/
+	void comment();
+	int check_type();
 %}
 /*%option bison-bridge bison-locations*/
 D			[0-9]
@@ -57,18 +55,18 @@ IS			(u|U|l|L)*
 "volatile"		{ count(); return(VOLATILE); }
 "while"			{ count(); return(WHILE); }
 
-{L}({L}|{D})*		{ count(); return(check_type()); }
+{L}({L}|{D})*		{ count(); yylval.s = strdup(yytext); return(check_type()); }
 
 0[xX]{H}+{IS}?		{ count(); yylval.i = strtol(yytext, NULL, 16); return(CONSTANT_INT); }
 0{D}+{IS}?		{ count(); yylval.i = strtol(yytext, NULL, 8); return(CONSTANT_INT); }
 {D}+{IS}?		{ count(); yylval.i = strtol(yytext, NULL, 10); return(CONSTANT_INT); }
-L?'(\\.|[^\\'])+'	{ count(); yylval.c = 42; return(CONSTANT_CHAR); }
+L?'(\\.|[^\\'])+'	{ count(); yylval.s = strdup(yytext); return(CONSTANT_CHAR); }
 
 {D}+{E}{FS}?		{ count(); yylval.d = strtod(yytext, NULL); return(CONSTANT_DOUBLE); }
-{D}*"."{D}+({E})?{FS}?	{ count(); yylval.d = strtod(yytext, NULL); return(CONSTANT_DOUBLE); }
-{D}+"."{D}*({E})?{FS}?	{ count(); yylval.d = strtod(yytext, NULL); return(CONSTANT_DOUBLE); }
+{D}*"."{D}+({E})?{FS}?	{ count(); yylval.d = strtof(yytext, NULL); return(CONSTANT_DOUBLE); }
+{D}+"."{D}*({E})?{FS}?	{ count(); yylval.d = strtof(yytext, NULL); return(CONSTANT_DOUBLE); }
 
-L?\"(\\.|[^\\"])*\"	{ count(); yylval->s = malloc(sizeof(char) * yyleng); strcpy(yylval->s, yytext); return(STRING_LITERAL); }
+L?\"(\\.|[^\\"])*\"	{ count(); yylval.s = strdup(yytext); return(STRING_LITERAL); }
 
 "..."			{ count(); return(ELLIPSIS); }
 ">>="			{ count(); return(RIGHT_ASSIGN); }
@@ -92,30 +90,30 @@ L?\"(\\.|[^\\"])*\"	{ count(); yylval->s = malloc(sizeof(char) * yyleng); strcpy
 ">="			{ count(); return(GE_OP); }
 "=="			{ count(); return(EQ_OP); }
 "!="			{ count(); return(NE_OP); }
-";"			{ count(); return(';'); }
+";" 			{ count(); return(';'); }
 ("{"|"<%")		{ count(); return('{'); }
 ("}"|"%>")		{ count(); return('}'); }
-","			{ count(); return(','); }
-":"			{ count(); return(':'); }
-"="			{ count(); return('='); }
-"("			{ count(); return('('); }
-")"			{ count(); return(')'); }
+"," 			{ count(); return(','); }
+":" 			{ count(); return(':'); }
+"=" 			{ count(); return('='); }
+"(" 			{ count(); return('('); }
+")" 			{ count(); return(')'); }
 ("["|"<:")		{ count(); return('['); }
 ("]"|":>")		{ count(); return(']'); }
-"."			{ count(); return('.'); }
-"&"			{ count(); return('&'); }
-"!"			{ count(); return('!'); }
-"~"			{ count(); return('~'); }
-"-"			{ count(); return('-'); }
-"+"			{ count(); return('+'); }
-"*"			{ count(); return('*'); }
-"/"			{ count(); return('/'); }
-"%"			{ count(); return('%'); }
-"<"			{ count(); return('<'); }
-">"			{ count(); return('>'); }
-"^"			{ count(); return('^'); }
-"|"			{ count(); return('|'); }
-"?"			{ count(); return('?'); }
+"." 			{ count(); return('.'); }
+"&" 			{ count(); return('&'); }
+"!" 			{ count(); return('!'); }
+"~" 			{ count(); return('~'); }
+"-" 			{ count(); return('-'); }
+"+" 			{ count(); return('+'); }
+"*" 			{ count(); return('*'); }
+"/" 			{ count(); return('/'); }
+"%" 			{ count(); return('%'); }
+"<" 			{ count(); return('<'); }
+">" 			{ count(); return('>'); }
+"^" 			{ count(); return('^'); }
+"|" 			{ count(); return('|'); }
+"?" 			{ count(); return('?'); }
 
 [ \t\v\n\f]		{ count(); }
 .			{ /* ignore bad characters */
@@ -124,13 +122,13 @@ L?\"(\\.|[^\\"])*\"	{ count(); yylval->s = malloc(sizeof(char) * yyleng); strcpy
 
 %%
 
-yywrap()
+int yywrap()
 {
 	return(1);
 }
 
 
-comment()
+void comment()
 {
 	char c, c1;
 
@@ -164,7 +162,7 @@ void count()
 		else
 			column++;
 
-	//ECHO;
+	ECHO;
 }
 
 
