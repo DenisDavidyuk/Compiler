@@ -77,6 +77,7 @@ Node3 * createNode3(NodeAction action, NodeSyntax * node1, NodeSyntax * node2, N
 Node4 * createNode4(NodeAction action, NodeSyntax * node1, NodeSyntax * node2, NodeSyntax * node3, NodeSyntax * node4);
 NodeN * createNodeN(NodeAction action);
 NodeN * appendNodeN(NodeN * NodeN, NodeSyntax * node);
+NodeN * mergeNodeN(NodeN * nodeBase, NodeN * nodeNew);
 NodeVal * createNodeValChar(char * value);
 NodeVal * createNodeValInt(int value);
 NodeVal * createNodeValDouble(double value);

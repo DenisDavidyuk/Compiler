@@ -18,9 +18,10 @@ SymTable * appendToSymTable(SymTable * table, Sym * sym) {
 }
 
 
-void appendDeclaration(NodeSyntax * type, NodeN * ident) {
-    for (int i = 0; i < ident->length; i++) {
-        ident->nodes[i];
+void appendDeclaration(NodeSyntax * declaration_specifiers, NodeN * init_declarator_list) {
+    for (int i = 0; i < init_declarator_list->length; i++) {
+        init_declarator_list->nodes[i];
+        //createSymVar()
     }
 }
 

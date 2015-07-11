@@ -68,6 +68,18 @@ NodeN * appendNodeN(NodeN * nodeBase, NodeSyntax * nodeNew) {
     return node;
 }
 
+NodeN * mergeNodeN(NodeN * nodeBase, NodeN * nodeNew) {
+    if (!nodeNew) return nodeBase;
+    assert(nodeBase->type == NODE_N);
+    assert(nodeNew->type == NODE_N);
+    int newLength = nodeBase->length + nodeNew->length;
+    nodeBase->nodes = realloc(nodeBase->nodes, sizeof(NodeSyntax *) * newLength);
+    for (int i = 0; i < nodeNew->length; i++)
+        nodeBase->nodes[i + nodeBase->length] = nodeNew->nodes[i];
+    nodeBase->length = newLength;
+    return nodeBase;
+}
+
 NodeSym * createNodeSym(char * name) {
     NodeSym * node = malloc(sizeof(NodeSym));
     node->type = NODE_SYM;
@@ -175,6 +187,11 @@ void printNodeSyntax(NodeSyntax * node, int level) {
     if (!node) {
         printfl(level);
         printf("NULL NODE");
+        return;
+    }
+    if (node < 2000) {
+        printfl(level);
+        printf("%s", enum_tostring(node));
         return;
     }
     switch (node->type) {

@@ -67,8 +67,8 @@ primary_expression
 postfix_expression
 	: primary_expression
 	| postfix_expression '[' expression ']'	{ $$ = createNode2(ARR_OP, $1, $3); }
-	| postfix_expression '(' ')'	{ $$ = createNode2(CALL_OP, $1, createNodeN(NONE)); }
-	| postfix_expression '(' argument_expression_list ')'	{ $$ = createNode2(CALL_OP, $1, $3); }
+	| postfix_expression '(' ')'	{ $$ = createNode2(FUNC_CALL, $1, createNodeN(ARGUMENT_EXPRESSION_LIST)); }
+	| postfix_expression '(' argument_expression_list ')'	{ $$ = createNode2(FUNC_CALL, $1, $3); }
 	| postfix_expression '.' IDENTIFIER	{ $$ = createNode2(FIELD_OP, $1, createNodeSym($3)); }
 	| postfix_expression PTR_OP IDENTIFIER	{ $$ = createNode2(PTR_OP, $1, createNodeSym($3)); }
 	| postfix_expression INC_OP	{ $$ = createNode1(INC_SUFF, $1); }
@@ -76,7 +76,7 @@ postfix_expression
 	;
 
 argument_expression_list
-	: assignment_expression	{ $$ = appendNodeN(createNodeN(NONE), $1); }
+	: assignment_expression	{ $$ = appendNodeN(createNodeN(ARGUMENT_EXPRESSION_LIST), $1); }
 	| argument_expression_list ',' assignment_expression	{ $$ = appendNodeN($1, $3); }
 	;
 
@@ -200,16 +200,17 @@ constant_expression
 /* начало declarations */
 declaration /* добавить элементы в SymTable, создать новый compaund */
 	: declaration_specifiers ';'	{ $$ = NULL; }
-	| declaration_specifiers init_declarator_list ';'	{ /*appendDeclaration($1, $2);*/ $$ = createNode2(DECLARATION, $1, $2); }
+	| declaration_specifiers init_declarator_list ';'	{ $$ = NULL; appendDeclaration($1, $2); /*$$ = createNode2(DECLARATION, $1, $2);*/ }
+	//| declaration_specifiers init_declarator_list ';'	{ $$ = createNode2(DECLARATION, $1, $2); }
 	;
 
-declaration_specifiers /* сразу заполнять sym table надо? */
-	: storage_class_specifier	{ $$ = createNode0($1); }
-	| storage_class_specifier declaration_specifiers	{ $$ = createNode2(DECL_OP, createNode0($1), $2); } /* ??? */
-	| type_specifier
-	| type_specifier declaration_specifiers	{ $$ = createNode2(DECL_OP, $1, $2); } /* ??? */
-	| type_qualifier	{ $$ = createNode0($1); }
-	| type_qualifier declaration_specifiers	{ $$ = createNode2(DECL_OP, createNode0($1), $2); } /* ??? */
+declaration_specifiers /* const const int float */
+	: storage_class_specifier	{ $$ = appendNodeN(createNodeN(DECLARATION_SPECIFIERS), $1); }
+	| storage_class_specifier declaration_specifiers	{ $$ = appendNodeN($2, $1); }
+	| type_specifier	{ $$ = appendNodeN(createNodeN(DECLARATION_SPECIFIERS), $1); }
+	| type_specifier declaration_specifiers	{ $$ = appendNodeN($2, $1); }
+	| type_qualifier	{ $$ = appendNodeN(createNodeN(DECLARATION_SPECIFIERS), $1); }
+	| type_qualifier declaration_specifiers	{ $$ = appendNodeN($2, $1); }
 	/*| function_specifier
 	| function_specifier declaration_specifiers*/
 	;
@@ -264,7 +265,7 @@ struct_declaration_list
 	;
 
 struct_declaration
-	: specifier_qualifier_list struct_declarator_list ';'	{ $$ = createNode2(NONE, $1, $2); }
+	: specifier_qualifier_list struct_declarator_list ';'	{ $$ = createNode2(STRUCT_DECLARATION, $1, $2); }
 	;
 
 specifier_qualifier_list
@@ -302,8 +303,8 @@ enumerator
 	;
 
 type_qualifier
-	: CONST		{ $$ = CONST; }
-	| VOLATILE	{ $$ = VOLATILE; }
+	: CONST		{ $$ = createNode0(CONST); }
+	| VOLATILE	{ $$ = createNode0(VOLATILE); }
 	;
 
 declarator
@@ -316,20 +317,20 @@ direct_declarator
 	| '(' declarator ')'	{ $$ = $2; }
 	| direct_declarator '[' constant_expression ']'	{ $$ = appendNodeN($1, createNode1(ARRAY, $3)); }
 	| direct_declarator '[' ']'	{ $$ = appendNodeN($1, createNode1(ARRAY, NULL)); }
-	| direct_declarator '(' parameter_type_list ')'	{ $$ = appendNodeN($1, createNode1(FUNC_TYPED, $3)); }
-	| direct_declarator '(' identifier_list ')'	{ $$ = appendNodeN($1, createNode1(FUNC, $3)); }
-	| direct_declarator '(' ')'	{ $$ = appendNodeN($1, createNode1(FUNC, NULL)); }
+	| direct_declarator '(' parameter_type_list ')'	{ $$ = appendNodeN($1, createNode1(FUNC_DECLARATION, $3)); }
+	//| direct_declarator '(' identifier_list ')'	{ $$ = appendNodeN($1, createNode1(FUNC_CALL, $3)); }
+	| direct_declarator '(' ')'	{ $$ = appendNodeN($1, createNode1(FUNC_DECLARATION, NULL)); }
 	;
 
 pointer
-	: '*'	{ $$ = appendNodeN(createNodeN(NONE), createNode1(POINTER, NULL)); }
-	| '*' type_qualifier_list	{ $$ = appendNodeN($2, createNode1(POINTER, $2)); }
-	| '*' pointer	{ $$ = appendNodeN($2, createNode1(POINTER, NULL)); }
-	| '*' type_qualifier_list pointer	{ $$ = appendNodeN($3, createNode1(POINTER, $2)); }
+	: '*'	{ $$ = appendNodeN(createNodeN(DECLARATOR_POINTER), createNode0(POINTER)); }
+	| '*' type_qualifier_list	{ $$ = appendNodeN(appendNodeN(createNodeN(DECLARATOR_POINTER), $2), createNode0(POINTER)); }
+	| '*' pointer	{ $$ = appendNodeN($2, createNode0(POINTER)); }
+	| '*' type_qualifier_list pointer	{ $$ = appendNodeN(appendNodeN($3, $2), createNode0(POINTER)); }
 	;
 
 type_qualifier_list
-	: type_qualifier	{ $$ = appendNodeN(createNodeN(NONE), $1); }
+	: type_qualifier	{ $$ = appendNodeN(createNodeN(TYPE_QUALIFIER_LIST), $1); }
 	| type_qualifier_list type_qualifier	{ $$ = appendNodeN($1, $2); }
 	;
 
@@ -340,14 +341,14 @@ parameter_type_list
 	;
 
 parameter_list
-	: parameter_declaration	{ $$ = appendNodeN(createNodeN(NONE), $1); }
+	: parameter_declaration	{ $$ = appendNodeN(createNodeN(PARAMETER_LIST), $1); }
 	| parameter_list ',' parameter_declaration { $$ = appendNodeN($1, $3); }
 	;
 
 parameter_declaration
-	: declaration_specifiers declarator	{ createNode2(NONE, $1, $2); }
-	| declaration_specifiers abstract_declarator	{ createNode2(NONE, $1, $2); }
-	| declaration_specifiers	{ createNode2(NONE, $1, NULL); }
+	: declaration_specifiers declarator	{ $$ = createNode2(PARAMETER_DECLARATION, $1, $2); }
+	| declaration_specifiers abstract_declarator	{ $$ = createNode2(PARAMETER_DECLARATION, $1, $2); }
+	| declaration_specifiers	{ $$ = createNode2(PARAMETER_DECLARATION, $1, NULL); }
 	;
 
 identifier_list
@@ -362,26 +363,26 @@ type_name
 
 abstract_declarator
 	: pointer	{ $$ = createNode2(NONE, $1, NULL); }
-	| direct_abstract_declarator	{ $$ = createNode2(NONE, NULL, $1); }
+	| direct_abstract_declarator			{ $$ = createNode2(NONE, NULL, $1); }
 	| pointer direct_abstract_declarator	{ $$ = createNode2(NONE, $1, $2); }
 	;
 
 direct_abstract_declarator
-	: '(' abstract_declarator ')'	{ $$ = appendNodeN(createNodeN(DECLARATION), $2); }
-	| '[' ']'	{ $$ = appendNodeN(createNodeN(DECLARATION), createNode0(NONE)); }
-	| '[' constant_expression ']'	{ $$ = appendNodeN(createNodeN(DECLARATION), $2); }
-	| direct_abstract_declarator '[' ']'	{ $$ = appendNodeN($1, createNode0(NONE)); }
-	| direct_abstract_declarator '[' constant_expression ']'	{ $$ = appendNodeN($1, createNode1(NONE, $3)); }
-	| '(' ')'	{ $$ = appendNodeN(createNodeN(DECLARATION), createNode0(NONE)); }
-	| '(' parameter_type_list ')'	{ $$ = appendNodeN(createNodeN(DECLARATION), $2); }
-	| direct_abstract_declarator '(' ')'	{ $$ = appendNodeN($1, createNode0(NONE)); }
-	| direct_abstract_declarator '(' parameter_type_list ')'	{ $$ = appendNodeN($1, createNode1(NONE, $3)); }
+	: '(' abstract_declarator ')'								{ $$ = appendNodeN(createNodeN(DECLARATION), $2); }
+	| '[' ']'													{ $$ = appendNodeN(createNodeN(DECLARATION), createNode0(ARRAY)); }
+	| '[' constant_expression ']'								{ $$ = appendNodeN(createNodeN(DECLARATION), createNode1(ARRAY, $2)); }
+	| direct_abstract_declarator '[' ']'						{ $$ = appendNodeN($1, createNode0(ARRAY)); }
+	| direct_abstract_declarator '[' constant_expression ']'	{ $$ = appendNodeN($1, createNode1(ARRAY, $3)); }
+	| '(' ')'													{ $$ = appendNodeN(createNodeN(DECLARATION), createNode0(NONE)); }
+	| '(' parameter_type_list ')'								{ $$ = appendNodeN(createNodeN(DECLARATION), $2); }
+	| direct_abstract_declarator '(' ')'						{ $$ = appendNodeN($1, createNode0(FUNC_DECLARATION)); }
+	| direct_abstract_declarator '(' parameter_type_list ')'	{ $$ = appendNodeN($1, createNode1(FUNC_DECLARATION, $3)); }
 	;
 
 initializer
 	: assignment_expression
-	| '{' initializer_list '}' { $$ = $2; }
-	| '{' initializer_list ',' '}' { $$ = $2; }
+	| '{' initializer_list '}'		{ $$ = $2; }
+	| '{' initializer_list ',' '}'	{ $$ = $2; }
 	;
 
 initializer_list
@@ -458,19 +459,19 @@ jump_statement
 	;
 /* конец statement */
 
-translation_unit
+translation_unit /* добавить символ external_declaration в таблицу символов */
 	: external_declaration	{ astRoot = appendNodeN(createNodeN(NONE), $1); }
 	| translation_unit external_declaration	{ astRoot = appendNodeN(astRoot, $2); }
 	;
 
 external_declaration
-	: function_definition	{ $$ = $1; }
-	| declaration	{ $$ = $1; }
+	: function_definition
+	| declaration
 	;
 
 function_definition
-	: declaration_specifiers declarator compound_statement	{ $$ = createNode3(FUNC, $1, $2, $3); }
-	| declarator compound_statement	{ $$ = createNode3(FUNC, NULL, $1, $2); }
+	: declaration_specifiers declarator compound_statement	{ $$ = createNode3(FUNCTION_DEFINITION, $1, $2, $3); }
+	| declarator compound_statement	{ $$ = createNode3(FUNCTION_DEFINITION, NULL, $1, $2); }
 	;
 
 %%
