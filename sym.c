@@ -18,29 +18,36 @@ SymTable * appendToSymTable(SymTable * table, Sym * sym) {
 }
 
 
-void appendDeclaration(NodeSyntax * declaration_specifiers, NodeN * init_declarator_list) {
+void appendDeclaration(NodeN * declaration_specifiers, NodeN * init_declarator_list) {
     for (int i = 0; i < init_declarator_list->length; i++) {
-        init_declarator_list->nodes[i];
-        //createSymVar()
+        NodeN * node = init_declarator_list->nodes[i]; //init_declarator
+        NodeSym * nodeSym = popFirstNodeN(node->nodes[0]); //declarator
+        assert(nodeSym->type == NODE_SYM);
+        NodeN * type = createNodeN(NONE);
+        mergeNodeN(type, node->nodes[0]);
+        mergeNodeN(type, declaration_specifiers);
+        SymVar * sym = createSymVar(nodeSym->name, type, node->nodes[1]);
+        printSymVar(sym, 0);
     }
 }
 
 
-SymFunc * createSymFunc(char * name, NodeSyntax * type, NodeN * args, NodeSyntax * compound) {
+SymFunc * createSymFunc(char * name, NodeSyntax * type, NodeSyntax * compound) {
     SymFunc * sym = malloc(sizeof(SymFunc));
     sym->kind = SYM_FUNC;
     sym->name = name;
     sym->type = type;
     sym->args = args;
     sym->compound = compound;
+    sym->symTable = createSymTable();
     return sym;
 }
 
-SymType * createSymType(char * name) {
+SymType * createSymType(char * name, NodeSyntax * type) {
     SymType * sym = malloc(sizeof(SymType));
     sym->kind = SYM_TYPE;
     sym->name = name;
-    /* ??? */
+    sym->type = type;
     return sym;
 }
 

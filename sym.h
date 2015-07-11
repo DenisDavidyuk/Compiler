@@ -20,7 +20,7 @@ typedef struct SymTable {
 
 typedef struct SymType {
     SymKind kind;
-    char * name; //alias
+    char * name;
     NodeSyntax * type;
 } SymType;
 
@@ -28,8 +28,8 @@ typedef struct SymFunc {
     SymKind kind;
     char * name;
     NodeSyntax * type;
-    NodeN * args;
     NodeSyntax * compound;
+    SymTable * symTable;
 } SymFunc;
 
 typedef struct SymVar {
@@ -42,10 +42,10 @@ typedef struct SymVar {
 SymTable * createSymTable();
 SymTable * appendToSymTable(SymTable *, Sym *);
 
-void appendDeclaration(NodeSyntax * declaration_specifiers, NodeN * init_declarator_list);
+Sym * appendDeclaration(NodeN * declaration_specifiers, NodeN * init_declarator_list);
 
-SymFunc * createSymFunc(char * name, NodeSyntax * type, NodeN * args, NodeSyntax * compound);;
-SymType * createSymType(char * name);
+SymFunc * createSymFunc(char * name, NodeSyntax * type, NodeSyntax * compound);;
+SymType * createSymType(char * name, NodeSyntax * type);
 SymVar * createSymVar(char * name, NodeSyntax * type, NodeSyntax * init);
 
 void printSymFunc(SymFunc * sym, int level);
